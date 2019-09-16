@@ -1,0 +1,15 @@
+test_cache/*
+cache/*
+monitoring/*
+exports/*
+logs/*
+gtfs/*
+valhalla/valhalla_tiles
+valhalla/valhalla_tiles/*
+valhalla/valhalla_tiles.tar
+imports/*
+.DS_Store
+trRoutingCSA
+*.pbf
+osrm/driving/*
+osrm/walking/*

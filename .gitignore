@@ -14,3 +14,4 @@ trRoutingCSA
 osrm/driving/*
 osrm/walking/*
 references/enqod13_mtq_v13.2e.csv
+references/enqod13_mtq_v13.2e_sample.csv

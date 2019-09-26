@@ -210,6 +210,36 @@ const odMtl2ML = function() {
   });
 };
 
+const odML2Rtl = function() {
+  return new Promise(function(resolve, reject) {
+
+    if (fs.existsSync(__dirname + '/data/odML2Rtl.json'))
+    {
+      return resolve(JSON.parse(fs.readFileSync(__dirname + '/data/odML2Rtl.json')));
+    }
+
+    return knex.raw(`
+      SELECT 
+        id,
+        expansion_factor,
+        ST_Y(origin_geography::geometry) as origin_lat,
+        ST_X(origin_geography::geometry) as origin_lon,
+        ST_Y(destination_geography::geometry) as destination_lat,
+        ST_X(destination_geography::geometry) as destination_lon
+      FROM tr_od_trips
+      WHERE person_id IS NOT NULL
+      AND mode IN ('transit', 'parkAndRide', 'kissAndRide', 'bikeAndRide')
+      AND departure_time_seconds BETWEEN 21600 AND 32399
+      AND ST_INTERSECTS(origin_geography, ST_GeomFromGeoJSON('${metroLongueuilRegionGeojson}'))
+      AND ST_INTERSECTS(destination_geography, ST_GeomFromGeoJSON('${rtlRegionGeojson}'));
+    `).then(function(response) {
+      const odTrips = _get(response, 'rows');
+      fs.writeFileSync(__dirname + '/data/odML2Rtl.json', JSON.stringify(odTrips));
+      resolve(odTrips);
+    });
+  });
+};
+
 
 const subwayStations = function() {
 
@@ -269,6 +299,7 @@ Promise.all([
   odRtl2ML(),
   odMtl2ML(),
   odMtl2Rtl(),
+  odML2Rtl(),
   subwayStations()
 ]).then(function(results) {
   const [
@@ -279,31 +310,57 @@ Promise.all([
     odRtl2ML,
     odMtl2ML,
     odMtl2Rtl,
+    odML2Rtl,
     nodesGeojson
   ] = results;
-  console.log("smartCardRtl2Mtl", smartCardRtl2Mtl.length / 17);
-  console.log("smartCardRtl2ML" , smartCardRtl2ML.length  / 17);
-  console.log("smartCardMtl2Rtl", smartCardMtl2Rtl.length / 17);
-  console.log("smartCardML2Rtl" , smartCardML2Rtl.length  / 17);
 
-  let sumExpansionFactors = 0;
+  const smartCardRtl2MtlCount = smartCardRtl2Mtl.length / 17;
+  const smartCardRtl2MLCount  = smartCardRtl2ML.length  / 17;
+  const smartCardMtl2RtlCount = smartCardMtl2Rtl.length / 17;
+  const smartCardML2RtlCount  = smartCardML2Rtl.length  / 17;
+
+  console.log("smartCardRtl2Mtl", smartCardRtl2MtlCount);
+  console.log("smartCardRtl2ML" , smartCardRtl2MLCount );
+  console.log("smartCardMtl2Rtl", smartCardMtl2RtlCount);
+  console.log("smartCardML2Rtl" , smartCardML2RtlCount );
+  
+  let odRtl2MLCount = 0;
   odRtl2ML.forEach(function(odTrip) {
-    sumExpansionFactors += odTrip.expansion_factor;
+    odRtl2MLCount += odTrip.expansion_factor;
   });
-  console.log("odRtl2ML", sumExpansionFactors);
+  console.log("odRtl2ML", odRtl2MLCount);
 
-  sumExpansionFactors = 0;
+  let odMtl2MLCount = 0;
   odMtl2ML.forEach(function(odTrip) {
-    sumExpansionFactors += odTrip.expansion_factor;
+    odMtl2MLCount += odTrip.expansion_factor;
   });
-  console.log("odMtl2ML", sumExpansionFactors);
+  console.log("odMtl2ML", odMtl2MLCount);
 
-  sumExpansionFactors = 0;
+  let odMtl2RtlCount = 0;
   odMtl2Rtl.forEach(function(odTrip) {
-    sumExpansionFactors += odTrip.expansion_factor;
+    odMtl2RtlCount += odTrip.expansion_factor;
   });
-  console.log("odMtl2Rtl", sumExpansionFactors);
+  console.log("odMtl2Rtl", odMtl2RtlCount);
 
+  let odML2RtlCount = 0;
+  odML2Rtl.forEach(function(odTrip) {
+    odML2RtlCount += odTrip.expansion_factor;
+  });
+  console.log("odML2Rtl", odML2RtlCount);
+
+  const ratioMtl2ML = odML2RtlCount / smartCardML2RtlCount;
+  console.log("ratioMtl2ML", ratioMtl2ML);
+
+  const ratioML2Mtl = (smartCardRtl2MLCount - odRtl2MLCount) / (smartCardRtl2MLCount - odRtl2MLCount + smartCardRtl2MtlCount);
+  console.log("ratioML2Mtl", ratioML2Mtl);
+
+  // smartCardMtl2Rtl: move origins to subway stations
+
+  // smartCardML2Rtl: move ratioMtl2ML % of origins to subway stations
+
+  // smartCardRtl2Mtl: move destinations to subway stations
+
+  // smartCardRtl2ML: move ratioML2Mtl % of destinations to subway stations
 
   console.log("Stations count", nodesGeojson.features.length);
 

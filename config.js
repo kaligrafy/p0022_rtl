@@ -121,6 +121,10 @@ module.exports = {
       showEvolutionaryAlgorithmsFields: true,
       nodes: {
         defaultDwellTimeSeconds: 20
+      },
+      paths: {
+        defaultRoutingMode: 'bus_congestion',
+        defaultDwellTimeSeconds: 10
       }
     }
     /*transit: {
